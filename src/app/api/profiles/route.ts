@@ -28,7 +28,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    if (findProfileBySlug(username)) {
+    if (await findProfileBySlug(username)) {
       return NextResponse.json(
         { error: [`"${username}" is already taken — try another username or leave it blank.`] },
         { status: 409 }
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
   const editToken = generateEditToken();
 
-  const profile = createProfile({
+  const profile = await createProfile({
     slug,
     editTokenHash: hashToken(editToken),
     handles,

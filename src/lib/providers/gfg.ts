@@ -1,4 +1,5 @@
 import { fetchJson, ProviderError, withCache } from "./fetch";
+import { statsKey } from "./cache-key";
 import type { DayContribution, GfgData } from "./types";
 
 const BASE = "https://gfg-stats.tashif.codes";
@@ -39,7 +40,7 @@ interface GfgSolvedData {
 }
 
 export async function getGfgStats(handle: string): Promise<GfgData> {
-  const key = `gfg:v3:${handle.toLowerCase()}`;
+  const key = statsKey("gfg", handle);
   return withCache(key, 12 * 3600, async () => {
     const [summaryEnv, profileEnv, heatmapEnv, solvedEnv] = await Promise.allSettled([
       fetchJson<GfgEnvelope<GfgSummaryData>>(

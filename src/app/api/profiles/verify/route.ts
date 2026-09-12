@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Enter your edit key." }, { status: 400 });
   }
 
-  const profile = findProfileBySlug(slug);
+  const profile = await findProfileBySlug(slug);
   if (!profile) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }

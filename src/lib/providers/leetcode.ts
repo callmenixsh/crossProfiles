@@ -1,4 +1,5 @@
 import { postJson, ProviderError, withCache } from "./fetch";
+import { statsKey } from "./cache-key";
 import type { DayContribution, LeetCodeData } from "./types";
 
 const GQL = "https://leetcode.com/graphql";
@@ -37,7 +38,7 @@ interface LcQueryResult {
 }
 
 export async function getLeetCodeStats(handle: string): Promise<LeetCodeData> {
-  const key = `lc:v2:${handle.toLowerCase()}`;
+  const key = statsKey("leetcode", handle);
   return withCache(key, 6 * 3600, async () => {
     let res: LcQueryResult;
     try {

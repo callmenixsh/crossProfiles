@@ -1,5 +1,6 @@
-import { ExternalLink, Globe, Link2 } from "lucide-react";
+import { ExternalLink, Globe, Link2, RefreshCw } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { SOCIAL_KEYS, SOCIAL_META, socialUrl, type ProfileButton, type SocialKey, type Socials } from "@/lib/socials";
 import { GitHubCard } from "@/components/platforms/github-card";
 import { LeetCodeCard } from "@/components/platforms/leetcode-card";
@@ -70,6 +71,7 @@ export function Dashboard({ slug, handles, stats, socials, buttons = [] }: Props
               alt=""
               width={88}
               height={88}
+              loading="eager"
               className="size-20 rounded-2xl object-cover ring-1 ring-white/10"
             />
           ) : (
@@ -84,11 +86,8 @@ export function Dashboard({ slug, handles, stats, socials, buttons = [] }: Props
           {github?.bio && <p className="mt-1 line-clamp-1 text-sm text-zinc-400">{github.bio}</p>}
           {github?.location && <p className="mt-0.5 text-xs text-zinc-500">{github.location}</p>}
 
-          {socialPills.length > 0 && (
+          {(socialPills.length > 0 || buttons.length > 0) && (
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 text-[11px] font-medium uppercase tracking-wider text-zinc-600">
-                Socials
-              </span>
               {socialPills.map((key) => {
                 const meta = SOCIAL_META[key];
                 const value = socials![key].trim();
@@ -108,14 +107,6 @@ export function Dashboard({ slug, handles, stats, socials, buttons = [] }: Props
                   </a>
                 );
               })}
-            </div>
-          )}
-
-          {buttons.length > 0 && (
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 text-[11px] font-medium uppercase tracking-wider text-zinc-600">
-                Links
-              </span>
               {buttons.map((b) => {
                 const url = /^https?:\/\//i.test(b.url) ? b.url : `https://${b.url}`;
                 return (
@@ -137,6 +128,13 @@ export function Dashboard({ slug, handles, stats, socials, buttons = [] }: Props
 
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <EditProfileButton slug={slug} />
+            <Link
+              href={`/${slug}?refresh=1`}
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-200"
+            >
+              <RefreshCw className="size-3" />
+              Refresh stats
+            </Link>
           </div>
         </div>
       </header>

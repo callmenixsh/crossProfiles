@@ -5,24 +5,10 @@ import {
   updateProfileHandles,
 } from "@/lib/db";
 import { hashToken } from "@/lib/slug";
-import { HANDLE_KEYS, sanitizeHandles, sanitizeSocials, type HandleKey } from "@/lib/validate";
+import { parseDisabled, sanitizeDisabled, sanitizeHandles, sanitizeSocials } from "@/lib/validate";
 import { parseSocials, parseButtons, type ProfileButton } from "@/lib/socials";
 import { parseTheme } from "@/lib/themes";
-import { cacheClear } from "@/lib/cache";
-
-const CACHE_PREFIX: Record<HandleKey, string> = {
-  github: "gh",
-  leetcode: "lc",
-  codeforces: "cf",
-  gfg: "gfg",
-  codechef: "cc",
-  tuf: "tuf",
-  monkeytype: "mt",
-  atcoder: "ac",
-  codewars: "cw",
-  gitlab: "gl",
-  devto: "dt",
-};
+import { clearStatsCache } from "@/lib/providers";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +46,7 @@ function load(ctx: { params: Promise<{ slug: string }> }) {
 
 export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await load(ctx);
-  const profile = findProfileBySlug(slug);
+  const profile = await findProfileBySlug(slug);
   if (!profile) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
@@ -70,6 +56,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
     socials: parseSocials(profile),
     theme: parseTheme(profile.theme),
     buttons: parseButtons(profile),
+    disabled: parseDisabled(profile.disabled),
   });
 }
 
@@ -97,7 +84,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ slug: string }>
   const body = await req.json().catch(() => null);
   const token = typeof body?.token === "string" ? body.token : "";
 
-  const profile = findProfileBySlug(slug);
+  const profile = await findProfileBySlug(slug);
   if (!profile) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
@@ -115,21 +102,19 @@ export async function PUT(req: Request, ctx: { params: Promise<{ slug: string }>
     return NextResponse.json({ error: socialsResult.errors }, { status: 400 });
   }
 
-  for (const key of HANDLE_KEYS) {
-    const prefix = CACHE_PREFIX[key];
-    for (const old of [handles[key], profile[key]]) {
-      if (old) cacheClear(`${prefix}:${old.toLowerCase()}`);
-    }
-  }
+  await clearStatsCache(publicHandles(profile));
+  await clearStatsCache(handles);
 
   const finalTheme = body?.theme === undefined ? profile.theme : parseTheme(body.theme);
   const finalButtons = body?.buttons === undefined ? profile.buttons : JSON.stringify(sanitizeButtons(body.buttons));
-  const updated = updateProfileHandles(
+  const finalDisabled = JSON.stringify(sanitizeDisabled(body?.disabled));
+  const updated = await updateProfileHandles(
     slug,
     handles,
     JSON.stringify(socialsResult.socials),
     finalTheme ?? undefined,
-    finalButtons ?? undefined
+    finalButtons ?? undefined,
+    finalDisabled
   );
   return NextResponse.json({
     slug: updated?.slug,
@@ -137,6 +122,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ slug: string }>
     socials: updated ? parseSocials(updated) : null,
     theme: updated ? parseTheme(updated.theme) : null,
     buttons: updated ? parseButtons(updated) : null,
+    disabled: updated ? parseDisabled(updated.disabled) : null,
   });
 }
 
@@ -145,7 +131,7 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ slug: string
   const body = await req.json().catch(() => null);
   const token = typeof body?.token === "string" ? body.token : "";
 
-  const profile = findProfileBySlug(slug);
+  const profile = await findProfileBySlug(slug);
   if (!profile) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
@@ -153,6 +139,6 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ slug: string
     return NextResponse.json({ error: "Invalid edit token" }, { status: 401 });
   }
 
-  deleteProfile(slug);
+  await deleteProfile(slug);
   return NextResponse.json({ ok: true });
 }

@@ -794,4 +794,11 @@
     scrollbar-width: thin;
     scrollbar-color: color-mix(in oklch, var(--foreground) 20%, transparent) transparent;
   }
+  .cp-no-anim,
+  .cp-no-anim *,
+  .cp-no-anim *::before,
+  .cp-no-anim *::after {
+    transition: none !important;
+    animation: none !important;
+  }
 }

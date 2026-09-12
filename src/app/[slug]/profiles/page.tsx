@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { findProfileBySlug } from "@/lib/db";
 import { parseSocials, parseButtons } from "@/lib/socials";
 import { parseTheme } from "@/lib/themes";
+import { parseDisabled } from "@/lib/validate";
 import { ProfilesPageShell } from "@/components/profiles-page-shell";
 import type { Handles } from "@/lib/providers";
 
@@ -14,7 +15,7 @@ export default async function ProfilesPage(props: {
   const { slug } = await props.params;
   const searchParams = await props.searchParams;
 
-  const profile = findProfileBySlug(slug);
+  const profile = await findProfileBySlug(slug);
   if (!profile) notFound();
 
   const handles: Handles = {
@@ -45,6 +46,7 @@ export default async function ProfilesPage(props: {
       socials={initialSocials}
       theme={theme}
       buttons={initialButtons}
+      disabled={parseDisabled(profile.disabled)}
     />
   );
 }

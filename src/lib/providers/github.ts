@@ -5,6 +5,7 @@ import {
   ProviderError,
   withCache,
 } from "./fetch";
+import { statsKey } from "./cache-key";
 import type { DayContribution, GitHubData, LanguageStat } from "./types";
 
 const BASE = "https://api.github.com";
@@ -36,7 +37,7 @@ interface GhContributionDay {
 }
 
 export async function getGitHubStats(handle: string): Promise<GitHubData> {
-  const key = `gh:v3:${handle.toLowerCase()}`;
+  const key = statsKey("github", handle);
   return withCache(key, 6 * 3600, async () => {
     const headers = ghHeaders();
     let user: GhUser;

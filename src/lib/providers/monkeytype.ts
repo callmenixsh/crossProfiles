@@ -1,4 +1,5 @@
 import { fetchJson, ProviderError, withCache } from "./fetch";
+import { statsKey } from "./cache-key";
 import type { MonkeyTypeData } from "./types";
 
 const BASE = "https://api.monkeytype.com";
@@ -32,7 +33,7 @@ interface MtResponse {
 }
 
 export async function getMonkeyTypeStats(handle: string): Promise<MonkeyTypeData> {
-  const key = `mt:${handle.toLowerCase()}`;
+  const key = statsKey("monkeytype", handle);
   return withCache(key, 6 * 3600, async () => {
     let res: MtResponse;
     try {

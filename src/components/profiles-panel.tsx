@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Check,
+  ChevronDown,
   ExternalLink,
+  Eye,
+  EyeOff,
   KeyRound,
   Link2,
   LoaderCircle,
@@ -20,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PLATFORM_ICONS } from "@/lib/platform-icons";
-import { PLATFORM_CATEGORIES, PLATFORM_META } from "@/lib/providers/types";
+import { PLATFORM_CATEGORIES, PLATFORM_META, type CategoryKey } from "@/lib/providers/types";
 import type { HandleKey } from "@/lib/validate";
 import { HANDLE_KEYS } from "@/lib/validate";
 import type { Handles } from "@/lib/providers";
@@ -34,6 +37,7 @@ interface Props {
   initialSocials: Socials;
   initialTheme?: ThemeKey;
   initialButtons?: ProfileButton[];
+  initialDisabled?: string[];
   onThemeChange?: (theme: ThemeKey) => void;
 }
 
@@ -46,6 +50,7 @@ export function ProfilesPanel({
   initialSocials,
   initialTheme,
   initialButtons,
+  initialDisabled,
   onThemeChange,
 }: Props) {
   const router = useRouter();
@@ -73,6 +78,14 @@ export function ProfilesPanel({
   const [socials, setSocials] = useState<Socials>(initialSocials);
   const [theme, setTheme] = useState<ThemeKey>(parseTheme(initialTheme));
   const [buttons, setButtons] = useState<ProfileButton[]>(initialButtons?.length ? initialButtons : [{ label: "", url: "" }]);
+  const [disabled, setDisabled] = useState<Set<string>>(() => new Set(initialDisabled ?? []));
+  const [added, setAdded] = useState<Set<HandleKey>>(
+    () =>
+      new Set(
+        HANDLE_KEYS.filter((k) => initialHandles[k].trim().length > 0 || (initialDisabled ?? []).includes(k))
+      )
+  );
+  const [openAdd, setOpenAdd] = useState<CategoryKey | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -80,15 +93,24 @@ export function ProfilesPanel({
   const lastSaved = useRef("");
 
   const payload = useMemo(
-    () => JSON.stringify({ ...values, socials, theme, buttons }),
-    [values, socials, theme, buttons]
+    () => JSON.stringify({ ...values, socials, theme, buttons, disabled: [...disabled] }),
+    [values, socials, theme, buttons, disabled]
   );
 
   const effectiveToken = token || initialToken;
 
+  function suspendTransitions() {
+    const el = document.documentElement;
+    el.classList.add("cp-no-anim");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => el.classList.remove("cp-no-anim"));
+    });
+  }
+
   const applyTheme = useCallback(
     (next: ThemeKey) => {
       if (next === theme) return;
+      suspendTransitions();
       setTheme(next);
       onThemeChange?.(next);
     },
@@ -104,7 +126,7 @@ export function ProfilesPanel({
         const res = await fetch(`/api/profiles/${slug}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: effectiveToken, ...values, socials, theme, buttons }),
+          body: JSON.stringify({ token: effectiveToken, ...values, socials, theme, buttons, disabled: [...disabled] }),
         });
         const body = await res.json();
         if (!res.ok) {
@@ -132,7 +154,7 @@ export function ProfilesPanel({
         return false;
       }
     },
-    [effectiveToken, payload, slug, values, socials, theme, buttons, applyTheme]
+    [effectiveToken, payload, slug, values, socials, theme, buttons, disabled, applyTheme]
   );
 
   useEffect(() => {
@@ -172,6 +194,38 @@ export function ProfilesPanel({
 
   function removeButton(i: number) {
     setButtons((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  function toggleDisabled(key: string) {
+    setDisabled((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function addPlatform(key: HandleKey) {
+    setAdded((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  }
+
+  function removePlatform(key: HandleKey) {
+    setValues((v) => ({ ...v, [key]: "" }));
+    setAdded((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+    setDisabled((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
   }
 
   async function onDelete() {
@@ -283,105 +337,147 @@ export function ProfilesPanel({
         </div>
       </section>
 
-      <section aria-label="Socials">
+      <section aria-label="Profiles">
         <div className="mb-3">
-            <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
-              <AtSign className="size-3.5 text-zinc-500" />
-              Socials
-            </h2>
-          </div>
-        <div className="grid grid-cols-1 gap-3 cp-card p-4 sm:grid-cols-2">
-          {SOCIAL_KEYS.map((key) => {
-            const meta = SOCIAL_META[key];
+          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+            Profiles
+          </h2>
+        </div>
+        <div className="space-y-6 cp-card p-4">
+          {PLATFORM_CATEGORIES.map((cat) => {
+            const addedKeys = cat.keys.filter((k) => added.has(k));
+            const available = cat.keys.filter((k) => !added.has(k));
+            const isOpen = openAdd === cat.id;
             return (
-              <div key={key} className="space-y-1">
-                <Label htmlFor={`social-${key}`} className="text-[13px] text-zinc-300">
-                  {meta.label}
-                </Label>
-                <input
-                  id={`social-${key}`}
-                  type="text"
-                  value={socials[key]}
-                  onChange={(e) => setSocials((s) => ({ ...s, [key]: e.target.value }))}
-                  placeholder={meta.domain}
-                  autoComplete="off"
-                  spellCheck={false}
-                  className="h-10 w-full rounded-lg border border-input bg-zinc-950/60 px-3 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                />
+              <div key={cat.id} aria-label={cat.label}>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+                    {cat.label}
+                  </p>
+                  <span className="text-[11px] text-zinc-600">
+                    {addedKeys.length}/{cat.keys.length} added
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {addedKeys.map((key) => {
+                    const meta = PLATFORM_META[key];
+                    const Icon = PLATFORM_ICONS[key];
+                    const isDisabled = disabled.has(key);
+                    return (
+                      <div key={key} className="space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <Label htmlFor={`${cat.id}-${key}`} className="flex items-center gap-1.5 text-[13px]">
+                            <Icon className="size-4 shrink-0" style={{ color: meta.accent }} />
+                            <span className="text-zinc-300">{meta.label}</span>
+                            {isDisabled && (
+                              <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-300">
+                                Hidden
+                              </span>
+                            )}
+                          </Label>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => toggleDisabled(key)}
+                              aria-pressed={isDisabled}
+                              aria-label={`${isDisabled ? "Show" : "Hide"} ${meta.label} on public page`}
+                              title={isDisabled ? "Show on public page" : "Hide from public page"}
+                              className={`rounded-md p-1.5 transition-colors ${
+                                isDisabled
+                                  ? "text-red-300 hover:bg-red-500/10"
+                                  : "text-zinc-600 hover:bg-zinc-800 hover:text-zinc-300"
+                              }`}
+                            >
+                              {isDisabled ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removePlatform(key)}
+                              aria-label={`Remove ${meta.label}`}
+                              title={`Remove ${meta.label}`}
+                              className="rounded-md p-1.5 text-zinc-600 transition-colors hover:bg-zinc-800 hover:text-zinc-300"
+                            >
+                              <X className="size-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <input
+                          id={`${cat.id}-${key}`}
+                          type="text"
+                          value={values[key]}
+                          onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}
+                          placeholder={meta.domain}
+                          autoComplete="off"
+                          spellCheck={false}
+                          className={`h-10 w-full rounded-lg border border-input bg-zinc-950/60 px-3 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 ${isDisabled ? "opacity-50" : ""}`}
+                        />
+                      </div>
+                    );
+                  })}
+
+                  {available.length > 0 && (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setOpenAdd(isOpen ? null : cat.id)}
+                        aria-expanded={isOpen}
+                        className={`inline-flex w-full items-center justify-between gap-2 rounded-lg border border-dashed px-3 py-2 text-sm transition-all active:scale-[0.99] ${
+                          isOpen
+                            ? "border-violet-500/50 bg-violet-500/5 text-violet-300"
+                            : "border-zinc-700 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <Plus className="size-4" />
+                          {isOpen ? "Choose a platform" : "Add platform"}
+                        </span>
+                        <ChevronDown className={`size-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                      </button>
+
+                      {isOpen && (
+                        <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                          {available.map((key) => {
+                            const meta = PLATFORM_META[key];
+                            const Icon = PLATFORM_ICONS[key];
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => addPlatform(key)}
+                                className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-left text-[13px] text-zinc-300 transition-all hover:border-zinc-700 hover:text-zinc-100 active:scale-[0.99]"
+                              >
+                                <Icon className="size-4 shrink-0" style={{ color: meta.accent }} />
+                                <span className="truncate">{meta.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
-        </div>
-      </section>
 
-      <section aria-label="Custom buttons">
-        <div className="mb-3">
-            <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
-              <Link2 className="size-3.5 text-zinc-500" />
-              Custom buttons
-            </h2>
-          </div>
-        <div className="space-y-3 cp-card p-4">
-          {buttons.map((b, i) => (
-            <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_2fr_auto]">
-              <input
-                type="text"
-                value={b.label}
-                onChange={(e) => setButton(i, { label: e.target.value })}
-                placeholder="Label (e.g. Portfolio)"
-                autoComplete="off"
-                spellCheck={false}
-                className="h-10 w-full rounded-lg border border-input bg-zinc-950/60 px-3 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              />
-              <input
-                type="text"
-                value={b.url}
-                onChange={(e) => setButton(i, { url: e.target.value })}
-                placeholder="https://…"
-                autoComplete="off"
-                spellCheck={false}
-                className="h-10 w-full rounded-lg border border-input bg-zinc-950/60 px-3 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => removeButton(i)}
-                aria-label={`Remove ${b.label || "button"}`}
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-          ))}
-          <Button type="button" variant="outline" onClick={addButton} className="w-full">
-            <Plus className="size-4" /> Add button
-          </Button>
-        </div>
-      </section>
-
-      {PLATFORM_CATEGORIES.map((cat) => {
-        return (
-          <section key={cat.id} aria-label={cat.label}>
-            <div className="mb-3">
-              <h2 className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
-                {cat.label}
-              </h2>
-            </div>
-            <div className="space-y-3 cp-card p-4">
-              {cat.keys.map((key) => {
-                const meta = PLATFORM_META[key];
-                const Icon = PLATFORM_ICONS[key];
+          <div className="border-t border-zinc-800 pt-5">
+            <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+              <AtSign className="size-3.5 text-zinc-500" />
+              Socials
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {SOCIAL_KEYS.map((key) => {
+                const meta = SOCIAL_META[key];
                 return (
                   <div key={key} className="space-y-1">
-                    <Label htmlFor={`${cat.id}-${key}`} className="flex items-center gap-1.5 text-[13px]">
-                      <Icon className="size-4 shrink-0" style={{ color: meta.accent }} />
-                      <span className="text-zinc-300">{meta.label}</span>
+                    <Label htmlFor={`social-${key}`} className="text-[13px] text-zinc-300">
+                      {meta.label}
                     </Label>
                     <input
-                      id={`${cat.id}-${key}`}
+                      id={`social-${key}`}
                       type="text"
-                      value={values[key]}
-                      onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}
+                      value={socials[key]}
+                      onChange={(e) => setSocials((s) => ({ ...s, [key]: e.target.value }))}
                       placeholder={meta.domain}
                       autoComplete="off"
                       spellCheck={false}
@@ -391,9 +487,52 @@ export function ProfilesPanel({
                 );
               })}
             </div>
-          </section>
-        );
-      })}
+          </div>
+
+          <div className="border-t border-zinc-800 pt-5">
+            <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+              <Link2 className="size-3.5 text-zinc-500" />
+              Custom buttons
+            </p>
+            <div className="space-y-3">
+              {buttons.map((b, i) => (
+                <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_2fr_auto]">
+                  <input
+                    type="text"
+                    value={b.label}
+                    onChange={(e) => setButton(i, { label: e.target.value })}
+                    placeholder="Label (e.g. Portfolio)"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="h-10 w-full rounded-lg border border-input bg-zinc-950/60 px-3 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  />
+                  <input
+                    type="text"
+                    value={b.url}
+                    onChange={(e) => setButton(i, { url: e.target.value })}
+                    placeholder="https://…"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="h-10 w-full rounded-lg border border-input bg-zinc-950/60 px-3 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeButton(i)}
+                    aria-label={`Remove ${b.label || "button"}`}
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" onClick={addButton} className="w-full">
+                <Plus className="size-4" /> Add button
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {message && !message.ok && (
         <p className="flex items-center gap-1.5 text-xs text-red-400">

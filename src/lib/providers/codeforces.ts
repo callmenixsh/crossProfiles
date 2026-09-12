@@ -1,4 +1,5 @@
 import { fetchJson, ProviderError, withCache } from "./fetch";
+import { statsKey } from "./cache-key";
 import type { CodeforcesData, DayContribution } from "./types";
 
 const BASE = "https://codeforces.com/api";
@@ -38,7 +39,7 @@ interface CfStatus {
 }
 
 export async function getCodeforcesStats(handle: string): Promise<CodeforcesData> {
-  const key = `cf:${handle.toLowerCase()}`;
+  const key = statsKey("codeforces", handle);
   return withCache(key, 3 * 3600, async () => {
     const info = await fetchJson<CfUserInfo>(
       `${BASE}/user.info?handles=${encodeURIComponent(handle)}`,

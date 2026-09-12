@@ -1,5 +1,6 @@
 import type { Handles } from "./providers";
 import { EMPTY_SOCIALS, SOCIAL_KEYS, type Socials } from "./socials";
+import { PLATFORMS } from "./providers/types";
 
 export type HandleKey = keyof Handles;
 
@@ -16,6 +17,28 @@ export const HANDLE_KEYS: HandleKey[] = [
   "gitlab",
   "devto",
 ];
+
+const PLATFORM_SET = new Set<string>(PLATFORMS);
+
+export function sanitizeDisabled(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set<string>();
+  for (const item of input) {
+    if (typeof item === "string" && PLATFORM_SET.has(item)) seen.add(item);
+  }
+  return PLATFORMS.filter((key) => seen.has(key));
+}
+
+export function parseDisabled(stored: string | null | undefined): string[] {
+  if (!stored) return [];
+  try {
+    const raw: unknown = JSON.parse(stored);
+    if (!Array.isArray(raw)) return [];
+    return sanitizeDisabled(raw);
+  } catch {
+    return [];
+  }
+}
 
 export const USERNAME_RE = /^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/;
 

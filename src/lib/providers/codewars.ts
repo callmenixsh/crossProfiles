@@ -1,4 +1,5 @@
 import { fetchJson, ProviderError, withCache } from "./fetch";
+import { statsKey } from "./cache-key";
 import type { CodewarsData, CodewarsRank } from "./types";
 
 interface CodewarsApiUser {
@@ -15,7 +16,7 @@ interface CodewarsApiUser {
 }
 
 export async function getCodewarsStats(handle: string): Promise<CodewarsData> {
-  const key = `cw:${handle.toLowerCase()}`;
+  const key = statsKey("codewars", handle);
   return withCache(key, 6 * 3600, async () => {
     let user: CodewarsApiUser;
     try {

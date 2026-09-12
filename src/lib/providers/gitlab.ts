@@ -1,4 +1,5 @@
 import { fetchJson, ProviderError, withCache } from "./fetch";
+import { statsKey } from "./cache-key";
 import type { GitLabData, LanguageStat } from "./types";
 
 interface GitLabUser {
@@ -16,7 +17,7 @@ interface GitLabProject {
 }
 
 export async function getGitLabStats(handle: string): Promise<GitLabData> {
-  const key = `gl:${handle.toLowerCase()}`;
+  const key = statsKey("gitlab", handle);
   return withCache(key, 12 * 3600, async () => {
     let users: GitLabUser[] = [];
     try {

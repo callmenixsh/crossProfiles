@@ -44,7 +44,12 @@ export function ModeToggle() {
 
   function toggle() {
     const next = dark ? "light" : "dark";
-    document.documentElement.dataset.mode = next;
+    const el = document.documentElement;
+    el.classList.add("cp-no-anim");
+    el.dataset.mode = next;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => el.classList.remove("cp-no-anim"));
+    });
     try {
       localStorage.setItem(MODE_KEY, next);
     } catch {

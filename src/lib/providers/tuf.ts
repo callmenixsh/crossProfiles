@@ -1,4 +1,5 @@
 import { fetchJson, ProviderError, withCache } from "./fetch";
+import { statsKey } from "./cache-key";
 import type { DayContribution, TufData } from "./types";
 
 const BASE = "https://tuf-stats.tashif.codes";
@@ -31,7 +32,7 @@ interface TufProfileData {
 }
 
 export async function getTufStats(handle: string): Promise<TufData> {
-  const key = `tuf:${handle.toLowerCase()}`;
+  const key = statsKey("tuf", handle);
   return withCache(key, 3 * 3600, async () => {
     const [statsEnv, heatmapEnv, profileEnv] = await Promise.allSettled([
       fetchJson<TufEnvelope<TufStatsData>>(

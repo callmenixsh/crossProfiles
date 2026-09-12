@@ -7,7 +7,7 @@ export default async function EditPage(props: PageProps<"/[slug]/edit">) {
   const { slug } = await props.params;
   const searchParams = await props.searchParams;
 
-  const profile = findProfileBySlug(slug);
+  const profile = await findProfileBySlug(slug);
   if (!profile) notFound();
 
   const token = typeof searchParams.token === "string" ? searchParams.token : "";

@@ -8,7 +8,7 @@ export default async function SlugLayout(props: {
   children: ReactNode;
 }) {
   const { slug } = await props.params;
-  const profile = findProfileBySlug(slug);
+  const profile = await findProfileBySlug(slug);
   const theme = profile ? parseTheme(profile.theme) : "default";
   return <ThemeShell theme={theme}>{props.children}</ThemeShell>;
 }

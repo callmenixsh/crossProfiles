@@ -1,4 +1,5 @@
 import { fetchJson, ProviderError, withCache } from "./fetch";
+import { statsKey } from "./cache-key";
 import type { AtCoderData } from "./types";
 
 interface AtCoderHistoryItem {
@@ -14,7 +15,7 @@ interface AtCoderHistoryItem {
 }
 
 export async function getAtCoderStats(handle: string): Promise<AtCoderData> {
-  const key = `ac:${handle.toLowerCase()}`;
+  const key = statsKey("atcoder", handle);
   return withCache(key, 6 * 3600, async () => {
     let history: AtCoderHistoryItem[];
     try {

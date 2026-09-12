@@ -1,10 +1,14 @@
-import { db } from "./db";
+import { ensureSchema, getSql } from "./db";
 
-export function cacheGet<T>(key: string, ttlSeconds: number): T | null {
-  const row = db
-    .prepare("SELECT value, updatedAt FROM cache WHERE key = ?")
-    .get(key) as { value: string; updatedAt: number } | undefined;
+interface CacheRow {
+  value: string;
+  updatedAt: number;
+}
 
+export async function cacheGet<T>(key: string, ttlSeconds: number): Promise<T | null> {
+  await ensureSchema();
+  const rows = await getSql()<CacheRow[]>`SELECT value, "updatedAt" FROM cache WHERE key = ${key}`;
+  const row = rows[0];
   if (!row) return null;
   if (Date.now() - row.updatedAt > ttlSeconds * 1000) return null;
 
@@ -15,13 +19,16 @@ export function cacheGet<T>(key: string, ttlSeconds: number): T | null {
   }
 }
 
-export function cacheSet(key: string, value: unknown): void {
-  db.prepare(
-    `INSERT INTO cache (key, value, updatedAt) VALUES (?, ?, ?)
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updatedAt = excluded.updatedAt`
-  ).run(key, JSON.stringify(value), Date.now());
+export async function cacheSet(key: string, value: unknown): Promise<void> {
+  await ensureSchema();
+  await getSql()`
+    INSERT INTO cache (key, value, "updatedAt")
+    VALUES (${key}, ${JSON.stringify(value)}, ${Date.now()})
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = EXCLUDED."updatedAt"
+  `;
 }
 
-export function cacheClear(key: string): void {
-  db.prepare("DELETE FROM cache WHERE key = ?").run(key);
+export async function cacheClear(key: string): Promise<void> {
+  await ensureSchema();
+  await getSql()`DELETE FROM cache WHERE key = ${key}`;
 }

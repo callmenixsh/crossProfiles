@@ -1,9 +1,11 @@
+import { cacheClear } from "@/lib/cache";
 import type {
   AllStats,
   PlatformKey,
   ProviderResult,
   ProviderStats,
 } from "./types";
+import { statsKey } from "./cache-key";
 import { getGitHubStats } from "./github";
 import { getLeetCodeStats } from "./leetcode";
 import { getCodeforcesStats } from "./codeforces";
@@ -76,4 +78,14 @@ async function wrap(
       error: err instanceof Error ? err.message : "Unknown error",
     };
   }
+}
+
+export async function clearStatsCache(handles: Handles): Promise<void> {
+  await Promise.all(
+    (Object.keys(PROVIDERS) as PlatformKey[]).map(async (key) => {
+      const handle = handles[key].trim();
+      if (handle.length === 0) return;
+      await cacheClear(statsKey(key, handle));
+    })
+  );
 }

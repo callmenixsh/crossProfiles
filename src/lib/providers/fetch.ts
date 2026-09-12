@@ -88,11 +88,11 @@ export async function withCache<T>(
   ttlSeconds: number,
   fn: () => Promise<T>
 ): Promise<T> {
-  const hit = cacheGet<T>(key, ttlSeconds);
+  const hit = await cacheGet<T>(key, ttlSeconds);
   if (hit) return hit;
 
   const value = await fn();
-  cacheSet(key, value);
+  await cacheSet(key, value);
   return value;
 }
 

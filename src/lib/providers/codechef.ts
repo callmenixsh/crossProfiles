@@ -1,4 +1,5 @@
 import { fetchJson, fetchText, ProviderError, withCache } from "./fetch";
+import { statsKey } from "./cache-key";
 import type { CodechefData, DayContribution } from "./types";
 
 const PAGE_BASE = "https://www.codechef.com/users";
@@ -14,7 +15,7 @@ interface CodechefHeatmapData {
 }
 
 export async function getCodechefStats(handle: string): Promise<CodechefData> {
-  const key = `cc:${handle.toLowerCase()}`;
+  const key = statsKey("codechef", handle);
   return withCache(key, 12 * 3600, async () => {
     const [htmlEnv, heatmapEnv] = await Promise.allSettled([
       fetchText(
