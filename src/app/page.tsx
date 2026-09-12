@@ -1,7 +1,6 @@
 import { Sparkles } from "lucide-react";
 import { ProfileForm } from "@/components/profile-form";
 import { SiteFooter } from "@/components/site-footer";
-import { PLATFORMS } from "@/lib/providers/types";
 import { platformSuggestionUrl } from "@/lib/config";
 import { ThemeShell } from "@/components/theme-context";
 
@@ -22,11 +21,7 @@ export default function Home() {
             </span>
           </h1>
           <p className="mx-auto max-w-md text-[15px] leading-relaxed text-zinc-400">
-            Claim a username, then connect your GitHub, LeetCode, Codeforces and more — live stats on a
-            single public page.
-          </p>
-          <p className="text-xs text-zinc-600">
-            {PLATFORMS.length} platforms · auto-updating stats · no account needed
+            Your GitHub, LeetCode, Codeforces and more — live stats on one public page.
           </p>
         </div>
 

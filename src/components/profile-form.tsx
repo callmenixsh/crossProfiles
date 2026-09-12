@@ -18,6 +18,7 @@ export function ProfileForm() {
   const [username, setUsername] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [taken, setTaken] = useState<string | null>(null);
   const [created, setCreated] = useState<Created | null>(null);
   const [savedIt, setSavedIt] = useState(false);
   const [showKey, setShowKey] = useState(false);
@@ -29,6 +30,7 @@ export function ProfileForm() {
     if (submitting) return;
     setSubmitting(true);
     setErrors([]);
+    setTaken(null);
 
     try {
       const res = await fetch("/api/profiles", {
@@ -37,6 +39,12 @@ export function ProfileForm() {
         body: JSON.stringify({ username }),
       });
       const body = await res.json();
+      if (res.status === 409) {
+        const slug = body.slug || username.trim().toLowerCase();
+        setTaken(slug);
+        setErrors([]);
+        return;
+      }
       if (!res.ok) {
         setErrors(Array.isArray(body.error) ? body.error : [body.error ?? "Something went wrong"]);
         return;
@@ -182,8 +190,10 @@ export function ProfileForm() {
           <Input
             id="username"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="codewithjoe"
+            onChange={(e) => {
+              setUsername(e.target.value);
+              setTaken(null);
+            }} placeholder="codewithjoe"
             autoComplete="off"
             autoCapitalize="none"
             spellCheck={false}
@@ -195,6 +205,12 @@ export function ProfileForm() {
         </p>
       </div>
 
+      {taken && (
+        <p className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 text-sm text-zinc-300">
+          That name&apos;s taken. Open it, or pick another username to claim.
+        </p>
+      )}
+
       {errors.length > 0 && (
         <ul className="space-y-1 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-xs text-destructive">
           {errors.map((err) => (
@@ -203,10 +219,18 @@ export function ProfileForm() {
         </ul>
       )}
 
-      <Button type="submit" size="lg" disabled={submitting} className="w-full">
-        {submitting ? <LoaderCircle className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />}
-        {submitting ? "Claiming…" : "Claim this username"}
-      </Button>
+      {taken ? (
+        <Button asChild size="lg" className="w-full">
+          <Link href={`/${taken}`}>
+            <ExternalLink className="size-4" /> Open /{taken}
+          </Link>
+        </Button>
+      ) : (
+        <Button type="submit" size="lg" disabled={submitting} className="w-full">
+          {submitting ? <LoaderCircle className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />}
+          {submitting ? "Claiming…" : "Claim this username"}
+        </Button>
+      )}
       <p className="text-center text-xs text-zinc-600">
         Next you&apos;ll get an edit key to save, then add your profiles.
       </p>

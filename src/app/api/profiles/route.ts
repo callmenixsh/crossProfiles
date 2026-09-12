@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     }
     if (await findProfileBySlug(username)) {
       return NextResponse.json(
-        { error: [`"${username}" is already taken — try another username or leave it blank.`] },
+        { error: [`"${username}" is already taken — try another username or leave it blank.`], slug: username },
         { status: 409 }
       );
     }
