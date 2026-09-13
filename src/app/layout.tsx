@@ -33,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <InlineScript
           html={`(function() {
   var SITE_ID = 'crossprofiles';
-  var SITE_URL = 'crossprofiles.netlify.app';
+  var SITE_URL = 'https://crossprofiles.vercel.app';
   var COOLDOWN_MS = 2000;
 
   var createVisitorId = function() {
